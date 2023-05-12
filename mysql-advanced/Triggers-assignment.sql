@@ -95,7 +95,78 @@ FROM    employees
 
 
 --5
-CREATE VIEW
+CREATE VIEW fired_status AS
+SELECT  employeeNumber, 
+        f_fired(employeeNumber) AS status
+FROM    employees
 
 
 
+--6
+DROP FUNCTION IF EXISTS f_give_raise;
+
+DELIMITER $$
+
+CREATE FUNCTION f_give_raise(
+    employeeNumber INT(11)
+) 
+RETURNS INT(6)
+DETERMINISTIC
+BEGIN
+    UPDATE  employees
+    SET     salary = salary * 1.05;
+    RETURN  1;
+END$$
+
+DELIMITER ;
+
+--test
+SELECT  f_give_raise(1002);
+
+
+--7
+DROP FUNCTION IF EXISTS f_remove_fired_employees;
+
+DELIMITER $$
+
+CREATE FUNCTION f_remove_fired_employees() 
+RETURNS INT(6)
+DETERMINISTIC
+BEGIN
+    DELETE FROM employees
+    WHERE   date_fired IS NOT NULL;
+    RETURN  1;
+END$$
+
+DELIMITER ;
+
+--test
+SELECT f_remove_fired_employees()
+
+
+
+--8
+--alter table
+ALTER TABLE salaryarchives
+ADD old_salary INT(6), ADD new_salary INT(6)
+
+--create trigger
+DROP TRIGGER IF EXISTS salaries_aur
+DELIMITER $$
+
+CREATE TRIGGER salaries_aur
+AFTER UPDATE
+ON employees FOR EACH ROW
+BEGIN
+    IF OLD.salary <> new.salary THEN
+        INSERT INTO SalaryArchives(employeeNumber, old_salary, new_salary)
+        VALUES(old.employeeNumber, old.salary, new.salary);
+    END IF;
+END$$
+
+DELIMITER ;
+
+--test
+UPDATE employees 
+SET     salary = 35000 
+WHERE   employeeNumber = 1002;
